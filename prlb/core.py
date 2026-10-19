@@ -503,11 +503,18 @@ def conflict_band_mass(X, y, W, b, D, R):
     return float(np.mean(ok & (G <= kap).any(1)))
 
 
-def tta_standard(Xt, W, b, mode='tent', lr=1e-3, batch=128, epochs=1, seed=0):
-    """TENT and SHOT in their standard episodic configuration on frozen features: a
+def tta_standard(Xt, W, b, mode='tent', optimizer='adam', lr=None, batch=None,
+                 epochs=1, seed=0):
+    """TENT and SHOT in a standard episodic configuration on frozen features: a
     feature-wise affine transform (the analogue of normalization-layer parameters) is
-    adapted by Adam over one pass of shuffled mini-batches, with no selection of
-    hyperparameters by the method's own objective."""
+    adapted over one pass of shuffled mini-batches, with no selection of
+    hyperparameters by the method's own objective.  optimizer='adam' uses learning
+    rate 1e-3 and batches of 128; optimizer='sgd' uses the published TENT setting of
+    SGD with momentum 0.9, learning rate 2.5e-4 and batches of 64."""
+    if lr is None:
+        lr = 1e-3 if optimizer == 'adam' else 2.5e-4
+    if batch is None:
+        batch = 128 if optimizer == 'adam' else 64
     import torch
     torch.manual_seed(seed)
     d = Xt.shape[1]
@@ -516,7 +523,10 @@ def tta_standard(Xt, W, b, mode='tent', lr=1e-3, batch=128, epochs=1, seed=0):
     X = torch.tensor(Xt, dtype=torch.float64)
     Wt = torch.tensor(W, dtype=torch.float64)
     b0 = torch.tensor(b, dtype=torch.float64)
-    opt = torch.optim.Adam([g, sh], lr=lr)
+    if optimizer == 'adam':
+        opt = torch.optim.Adam([g, sh], lr=lr)
+    else:
+        opt = torch.optim.SGD([g, sh], lr=lr, momentum=0.9)
     rng = np.random.default_rng(seed)
     for _ in range(epochs):
         for s in range(0, len(Xt), batch):
