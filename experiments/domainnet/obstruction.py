@@ -4,8 +4,9 @@ Usage:  python experiments/domainnet/obstruction.py {clip|dino} <K list> [tag]
 
 Uses the probes and the 4000-point target subsamples of tta.py and evaluates, for
 every ordered pair, the per-hypothesis and fixed-point correctors with the exact
-class displacements, the label-free EM per-class translation, TENT and SHOT in their
-standard episodic configuration, and the consistent-set statistics.
+class displacements, the label-free EM per-class translation, TENT and SHOT in a
+standard episodic configuration with Adam and with the published SGD setting, and
+the consistent-set statistics.
 
 The optional tag (default all) names the output file, so that class counts can run
 as separate jobs.
@@ -93,17 +94,19 @@ def main():
                 r['amb_correct'] = float(np.mean(inF & (F.sum(1) >= 2)))
                 r['band'] = R.conflict_band_mass(Xt, yt, W, b, Dl, Rr)
                 for nm in ('tent', 'shot'):
-                    try:
-                        r[nm] = R.acc(R.tta_standard(Xt, W, b, mode=nm), yt, W, b)
-                    except ImportError:
-                        r[nm] = float('nan')
+                    for opt in ('adam', 'sgd'):
+                        key = nm if opt == 'adam' else nm + '_sgd'
+                        try:
+                            r[key] = R.acc(R.tta_standard(Xt, W, b, mode=nm, optimizer=opt), yt, W, b)
+                        except ImportError:
+                            r[key] = float('nan')
                 rows.append(r)
                 print('%d %s %s->%s mean %.4f orc %.4f ph %.4f fp %.4f em %.4f tent %.4f shot %.4f amb %.4f band %.4f'
                       % (K, ENC, S, Tg, r['mean'], r['oracle'], r['ph_exact'], r['fp_exact'],
                          r['em'], r['tent'], r['shot'], r['amb'], r['band']), flush=True)
     with open(DNET_OUT / ('dnet_obstruction_%s_%s.pkl' % (ENC, TAG)), 'wb') as f:
         pickle.dump(rows, f)
-    keys = ['naive', 'mean', 'pc_pred', 'ph_exact', 'fp_exact', 'em', 'tent', 'shot',
+    keys = ['naive', 'mean', 'pc_pred', 'ph_exact', 'fp_exact', 'em', 'tent', 'shot', 'tent_sgd', 'shot_sgd',
             'oracle', 'fp_conv', 'amb', 'amb_correct', 'band']
     for K in KS:
         rr = [x for x in rows if x['K'] == K]
