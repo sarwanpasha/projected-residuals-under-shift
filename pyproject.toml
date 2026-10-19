@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prlb"
+version = "1.0.0"
+description = "Projected residuals and label budgets for linear probes under distribution shift"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+encode = ["torch>=2.0", "transformers>=4.40", "huggingface_hub>=0.20", "pyarrow>=12", "pillow>=9"]
+
+[tool.setuptools]
+packages = ["prlb"]
