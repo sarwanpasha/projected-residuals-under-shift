@@ -1,14 +1,15 @@
 """Source-anchored Route A on the label-budget cells of budget_allocation.py.
 
-Usage:  python experiments/cifar10c/budget_anchored.py {clip|dinov2}
+Usage:  python experiments/cifar10c/budget_anchored.py {clip|dinov2} [budgets tag]
 
 Reproduces the target samples and the labeled draws of budget_allocation.py exactly
 and adds the refit that is shrunk toward the source probe,
 argmin_T ||Z T - Y||^2 / B + lam ||T - T_S||^2, with lam chosen by five-fold
 cross-validation on the budget alone.  Counting the marginal is recomputed on the same
-draws so that the two arms are paired.
+draws so that the two arms are paired.  An optional comma-separated budget list and
+tag run a different budget grid; the labeled draws then follow that grid.
 
-Output: results/cifar10c/budget_anchored_<enc>.pkl
+Output: results/cifar10c/budget_anchored_<enc>.pkl, or budget_anchored_<enc>_<tag>.pkl
 """
 import pickle
 import sys
@@ -27,6 +28,10 @@ BUDG = [50, 100, 200, 400, 800]
 LAMS = (1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0)
 EPS = 1e-3
 ENC = sys.argv[1]
+TAG = ''
+if len(sys.argv) > 3:
+    BUDG = [int(x) for x in sys.argv[2].split(',')]
+    TAG = '_' + sys.argv[3]
 
 ensure(CIFAR_OUT)
 Xtr = np.load(CIFAR_EMB / ('%s_train.npy' % ENC)).astype(np.float64)
@@ -74,7 +79,7 @@ for cn in CORRUPTIONS:
                 rows.append(out)
     print('done %s' % cn, flush=True)
 
-with open(CIFAR_OUT / ('budget_anchored_%s.pkl' % ENC), 'wb') as f:
+with open(CIFAR_OUT / ('budget_anchored_%s%s.pkl' % (ENC, TAG)), 'wb') as f:
     pickle.dump(rows, f)
 
 print('\n=== SOURCE-ANCHORED ROUTE A: %s, %d cells ===' % (ENC, len(rows)))
