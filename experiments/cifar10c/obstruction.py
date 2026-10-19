@@ -9,7 +9,8 @@ script evaluates:
     the most favorable case for any label-free per-class rule;
   * the label-free EM per-class translation, which re-estimates the displacements from
     its own pseudo-classes until the assignment is stable;
-  * TENT and SHOT in their standard episodic configuration;
+  * TENT and SHOT in a standard episodic configuration, with Adam and with the
+    published SGD setting;
   * the consistent-set statistics: the fraction of points whose consistent set
     {k : h(x - delta_k) = k} holds more than one label, and the mass of the
     residual-conflict band 0 < gamma_k(z) <= kappa_{ck}.
@@ -64,15 +65,17 @@ def main():
             r['amb_correct'] = float(np.mean(inF & (F.sum(1) >= 2)))
             r['band'] = conflict_band_mass(Xt, yte, W, b, D, R)
             for nm in ('tent', 'shot'):
-                try:
-                    r[nm] = acc(tta_standard(Xt, W, b, mode=nm), yte, W, b)
-                except ImportError:
-                    r[nm] = float('nan')
+                for opt in ('adam', 'sgd'):
+                    key = nm if opt == 'adam' else nm + '_sgd'
+                    try:
+                        r[key] = acc(tta_standard(Xt, W, b, mode=nm, optimizer=opt), yte, W, b)
+                    except ImportError:
+                        r[key] = float('nan')
             rows.append(r)
         print('  %-20s %6.1f s' % (cn, time.time() - t0), flush=True)
     with open(CIFAR_OUT / ('obstruction_%s.pkl' % enc), 'wb') as f:
         pickle.dump(rows, f)
-    keys = ['naive', 'mean', 'pc_pred', 'ph_exact', 'fp_exact', 'em', 'tent', 'shot',
+    keys = ['naive', 'mean', 'pc_pred', 'ph_exact', 'fp_exact', 'em', 'tent', 'shot', 'tent_sgd', 'shot_sgd',
             'oracle', 'fp_conv', 'amb', 'amb_correct', 'band']
     print('\n=== %s, %d pairs: mean and 95 pct half-width ===' % (enc, len(rows)))
     for k in keys:
