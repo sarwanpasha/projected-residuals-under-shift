@@ -1,5 +1,5 @@
-"""Prototype shifting against feature translation, on the zero-shot CLIP head and on
-the source probe.
+"""Transductive prototype shifting against feature translation, on the zero-shot CLIP
+head and on the source probe.
 
 Usage:  python experiments/zeroshot/tps.py cifar
         python experiments/zeroshot/tps.py domainnet <K list> [tag]
@@ -12,12 +12,12 @@ head the script measures
   * the feature-translation rules of the paper: no correction, the common-mean
     correction, the fixed-point rule with the exact class displacements, and the
     per-class oracle;
-  * test-time prototype shifting in the manner of TPS (Sui et al., 2025): one shift
-    vector per class added to the class prototypes, or one shift shared by all
-    classes, learned by entropy minimization, either transductively over the target
-    set (one pass of Adam on batches of 64) or episodically per test point (one
-    gradient step from zero shifts on the point's own entropy, without augmented
-    views).
+  * transductive prototype shifting: one shift vector per class added to the class
+    prototypes, or one shift shared by all classes, learned over the target set by
+    one pass of Adam on batches of 64 with the information-maximization objective
+    (mean prediction entropy minus the entropy of the mean prediction), which does
+    not collapse to a single class as entropy alone does.  The episodic protocol of
+    TPS with augmented views needs the images and is run by tps_views.py.
 
 Every learning rate of LRS is stored so that a rate can be selected on held-out
 shifts.
@@ -34,7 +34,7 @@ from prlb import core as R
 from prlb.paths import CIFAR_EMB, CORRUPTIONS, DNET_EMB, DOMAINS, RESULTS, ensure
 
 OUT = RESULTS / 'zeroshot'
-LRS = (1e-4, 1e-3, 1e-2)
+LRS = (1e-5, 1e-4, 1e-3)
 SCALE = 100.0
 NSUB = 4000
 dev = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -91,7 +91,8 @@ def entropy(S):
 
 
 def tps_batch(h, X, lr, shared, seed=0):
-    """Transductive prototype shift: one pass of Adam over shuffled batches of 64."""
+    """Transductive prototype shift: one pass of Adam over shuffled batches of 64 on
+    the information-maximization objective."""
     torch.manual_seed(seed)
     Xt = torch.tensor(nrm(X) if h.cos else X, dtype=torch.float32, device=dev)
     P0 = torch.tensor(h.P, dtype=torch.float32, device=dev)
@@ -101,28 +102,12 @@ def tps_batch(h, X, lr, shared, seed=0):
     perm = np.random.default_rng(seed).permutation(len(X))
     for i in range(0, len(X), 64):
         idx = torch.tensor(perm[i:i + 64], device=dev)
-        L = entropy(torch_scores(h, Xt[idx], P0 + s)).mean()
+        S = torch_scores(h, Xt[idx], P0 + s)
+        p = torch.softmax(S, 1).mean(0)
+        L = entropy(S).mean() + (p * torch.log(p + 1e-12)).sum()
         opt.zero_grad(); L.backward(); opt.step()
     with torch.no_grad():
         return torch_scores(h, Xt, P0 + s).argmax(1).cpu().numpy()
-
-
-def tps_episodic(h, X, lr, shared, chunk=128):
-    """Episodic prototype shift: for every test point, one gradient step from zero
-    shifts on that point's own prediction entropy, then prediction."""
-    Xt = torch.tensor(nrm(X) if h.cos else X, dtype=torch.float32, device=dev)
-    P0 = torch.tensor(h.P, dtype=torch.float32, device=dev)
-    K, d = P0.shape
-    pred = []
-    for i in range(0, len(X), chunk):
-        xb = Xt[i:i + chunk]; n = len(xb)
-        s = torch.zeros((n, 1 if shared else K, d), dtype=torch.float32, device=dev,
-                        requires_grad=True)
-        L = entropy(torch_scores(h, xb, P0[None] + s)).sum()
-        g, = torch.autograd.grad(L, s)
-        with torch.no_grad():
-            pred.append(torch_scores(h, xb, P0[None] - lr * g).argmax(1).cpu().numpy())
-    return np.concatenate(pred)
 
 
 def evaluate(h, Xt, yt, D, dbar):
@@ -131,10 +116,9 @@ def evaluate(h, Xt, yt, D, dbar):
     r['mean'] = float(np.mean(h.predict(Xt - dbar) == yt))
     r['oracle'] = float(np.mean(h.predict(Xt - D[yt]) == yt))
     r['fp_exact'] = float(np.mean(fixed_point(h, Xt, D, h.predict(Xt - dbar)) == yt))
-    for nm, fn in (('tpsb', tps_batch), ('tpse', tps_episodic)):
-        for shared in (False, True):
-            key = nm + ('_shared' if shared else '_class')
-            r[key] = {lr: float(np.mean(fn(h, Xt, lr, shared) == yt)) for lr in LRS}
+    for shared in (False, True):
+        key = 'tpsb' + ('_shared' if shared else '_class')
+        r[key] = {lr: float(np.mean(tps_batch(h, Xt, lr, shared) == yt)) for lr in LRS}
     return r
 
 
@@ -161,9 +145,9 @@ def run_cifar():
                 r = dict(corr=cn, sev=sv, head=hn, group=cn)
                 r.update(evaluate(h, Xt, yte, D, dbar))
                 rows.append(r)
-                print('%s s%d %s naive %.4f mean %.4f orc %.4f fp %.4f tpsb_class %s tpsb_shared %s tpse_class %s'
+                print('%s s%d %s naive %.4f mean %.4f orc %.4f fp %.4f tpsb_class %s tpsb_shared %s'
                       % (cn, sv, hn, r['naive'], r['mean'], r['oracle'], r['fp_exact'],
-                         r['tpsb_class'], r['tpsb_shared'], r['tpse_class']), flush=True)
+                         r['tpsb_class'], r['tpsb_shared']), flush=True)
     return rows
 
 
@@ -216,14 +200,14 @@ def run_domainnet(KS):
                     r = dict(K=K, src=S, tgt=Tg, head=hn, group=Tg)
                     r.update(evaluate(h, Xt, yt, Dl, dbar))
                     rows.append(r)
-                    print('%d %s->%s %s naive %.4f mean %.4f orc %.4f fp %.4f tpsb_class %s tpsb_shared %s tpse_class %s'
+                    print('%d %s->%s %s naive %.4f mean %.4f orc %.4f fp %.4f tpsb_class %s tpsb_shared %s'
                           % (K, S, Tg, hn, r['naive'], r['mean'], r['oracle'], r['fp_exact'],
-                             r['tpsb_class'], r['tpsb_shared'], r['tpse_class']), flush=True)
+                             r['tpsb_class'], r['tpsb_shared']), flush=True)
     return rows
 
 
 def report(rows, groups):
-    keys = ['tpsb_class', 'tpsb_shared', 'tpse_class', 'tpse_shared']
+    keys = ['tpsb_class', 'tpsb_shared']
     for gk in groups:
         for hn in ('zs', 'probe'):
             s = [r for r in rows if r['head'] == hn and all(r.get(k) == v for k, v in gk.items())]
