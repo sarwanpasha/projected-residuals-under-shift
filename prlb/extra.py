@@ -318,3 +318,85 @@ def tv_lower_bound(A, B, rng, frac=0.5, lam=1e-2):
     pa = float((np.argmax(Xte_a @ W.T + b, 1) == 0).mean())
     pb = float((np.argmax(Xte_b @ W.T + b, 1) == 1).mean())
     return float(max(0.0, 2.0 * (0.5 * (pa + pb) - 0.5)))
+
+
+# ------------------------------------------------------------ few-shot baselines
+
+def _folds(B, rng, folds=5):
+    nf = int(min(folds, max(2, B // 2)))
+    fold = np.zeros(B, dtype=np.int64); fold[rng.permutation(B)] = np.arange(B) % nf
+    return fold, nf
+
+
+def _ovr(Xb, yb, K, lam):
+    n, d = Xb.shape
+    Y = np.zeros((n, K)); Y[np.arange(n), yb] = 1.0
+    Xa = np.c_[Xb, np.ones(n)]
+    Wa = np.linalg.solve(Xa.T @ Xa + lam * np.eye(d + 1), Xa.T @ Y)
+    return Wa[:d].T, Wa[d]
+
+
+def wise_cv(Xb, yb, K, W_S, b_S, rng, thetas=np.linspace(0.0, 1.0, 11), lam=1e-2):
+    """Weight-space interpolation in the manner of WiSE-FT: theta * (refit from
+    scratch) + (1 - theta) * (source probe), with theta chosen by cross-validated 0-1
+    error on the budget alone, ties broken toward the source probe."""
+    B = Xb.shape[0]
+    fold, nf = _folds(B, rng)
+    err = np.zeros(len(thetas))
+    for f in range(nf):
+        tr = fold != f; te = ~tr
+        if tr.sum() < 2 or te.sum() < 1:
+            continue
+        Wr, br = _ovr(Xb[tr], yb[tr], K, lam)
+        for j, t in enumerate(thetas):
+            S = Xb[te] @ (t * Wr + (1 - t) * W_S).T + t * br + (1 - t) * b_S
+            err[j] += float((S.argmax(1) != yb[te]).sum())
+    j = int(np.min(np.where(err <= err.min() + 1e-12)[0]))
+    t = float(thetas[j])
+    Wr, br = _ovr(Xb, yb, K, lam)
+    return t * Wr + (1 - t) * W_S, t * br + (1 - t) * b_S, t
+
+
+def pro2_basis(Xs, ys, K, rmax, lam=1e-2):
+    """Ordered orthonormal source-predictive directions in the manner of Pro2: a ridge
+    probe is fitted on the source, its discriminative directions are kept in order of
+    singular value, the features are projected off the span found so far, and the
+    step repeats until rmax directions are collected."""
+    Xc = Xs - Xs.mean(0)
+    d = Xs.shape[1]
+    Q = np.zeros((d, 0))
+    while Q.shape[1] < min(rmax, d):
+        Xr = Xc - (Xc @ Q) @ Q.T
+        W, _ = _ovr(Xr, ys, K, lam)
+        Wd = W - W.mean(0)
+        Wd = Wd - (Wd @ Q) @ Q.T
+        U, s, Vt = np.linalg.svd(Wd, full_matrices=False)
+        keep = s > 1e-8 * max(s.max(), 1e-30)
+        if not keep.any():
+            break
+        Q = np.concatenate([Q, Vt[keep].T], 1)
+        Q, _ = np.linalg.qr(Q)
+    return Q[:, :min(rmax, Q.shape[1])]
+
+
+def pro2_cv(Xb, yb, K, Q, rng, ranks, lams=(1e-3, 1e-2, 1e-1, 1.0, 10.0)):
+    """Probe on the first r source-predictive directions, with r and the ridge penalty
+    chosen by cross-validated 0-1 error on the budget alone.  Returns a probe on the
+    full features."""
+    B = Xb.shape[0]
+    fold, nf = _folds(B, rng)
+    cand = [(r, l) for r in ranks if r <= Q.shape[1] for l in lams]
+    err = np.zeros(len(cand))
+    for f in range(nf):
+        tr = fold != f; te = ~tr
+        if tr.sum() < 2 or te.sum() < 1:
+            continue
+        for j, (r, l) in enumerate(cand):
+            P = Q[:, :r]
+            W, b = _ovr(Xb[tr] @ P, yb[tr], K, l)
+            err[j] += float(((Xb[te] @ P) @ W.T + b).argmax(1).__ne__(yb[te]).sum())
+    j = int(np.argmin(err))
+    r, l = cand[j]
+    P = Q[:, :r]
+    W, b = _ovr(Xb @ P, yb, K, l)
+    return W @ P.T, b, r

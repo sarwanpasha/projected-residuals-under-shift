@@ -504,13 +504,15 @@ def conflict_band_mass(X, y, W, b, D, R):
 
 
 def tta_standard(Xt, W, b, mode='tent', optimizer='adam', lr=None, batch=None,
-                 epochs=1, seed=0):
+                 epochs=1, seed=0, filt=None):
     """TENT and SHOT in a standard episodic configuration on frozen features: a
     feature-wise affine transform (the analogue of normalization-layer parameters) is
     adapted over one pass of shuffled mini-batches, with no selection of
     hyperparameters by the method's own objective.  optimizer='adam' uses learning
     rate 1e-3 and batches of 128; optimizer='sgd' uses the published TENT setting of
-    SGD with momentum 0.9, learning rate 2.5e-4 and batches of 64."""
+    SGD with momentum 0.9, learning rate 2.5e-4 and batches of 64.  filt, when given,
+    keeps in each batch only the points whose prediction entropy is below
+    filt * log K, the reliable-sample filter of SAR."""
     if lr is None:
         lr = 1e-3 if optimizer == 'adam' else 2.5e-4
     if batch is None:
@@ -534,7 +536,13 @@ def tta_standard(Xt, W, b, mode='tent', optimizer='adam', lr=None, batch=None,
             Sb = (X[idx] * g + sh) @ Wt.T + b0
             logp = torch.log_softmax(Sb, 1)
             p = logp.exp()
-            L = -(p * logp).sum(1).mean()
+            ent = -(p * logp).sum(1)
+            if filt is not None:
+                keep = ent < filt * np.log(W.shape[0])
+                if int(keep.sum()) == 0:
+                    continue
+                ent = ent[keep]; p = p[keep]
+            L = ent.mean()
             if mode == 'shot':
                 pb = p.mean(0)
                 L = L + (pb * torch.log(pb + 1e-12)).sum()
@@ -542,3 +550,29 @@ def tta_standard(Xt, W, b, mode='tent', optimizer='adam', lr=None, batch=None,
     with torch.no_grad():
         Xa = (X * g + sh).numpy()
     return Xa
+
+
+TTA_GRID = [(opt, lr, filt) for opt in ('adam', 'sgd')
+            for lr in (1e-4, 3e-4, 1e-3, 3e-3) for filt in (None, 0.4)]
+
+
+def tta_grid(Xt, yt, W, b, mode):
+    """Accuracy of TENT or SHOT at every configuration of TTA_GRID.  The scores are
+    stored per configuration so that a configuration can be selected on held-out
+    shifts, never on the shift it is evaluated on."""
+    out = {}
+    for opt, lr, filt in TTA_GRID:
+        Xa = tta_standard(Xt, W, b, mode=mode, optimizer=opt, lr=lr, filt=filt)
+        out[(opt, lr, filt)] = acc(Xa, yt, W, b)
+    return out
+
+
+def select_held_out(rows, key, group):
+    """Leave-one-group-out selection: for each row, the configuration with the best
+    mean accuracy over the rows of the other groups, scored on the row itself."""
+    res = []
+    for r in rows:
+        oth = [q for q in rows if q[group] != r[group]]
+        best = max(TTA_GRID, key=lambda c: np.mean([q[key][c] for q in oth]))
+        res.append(r[key][best])
+    return np.array(res)
