@@ -5,6 +5,7 @@ Inputs:
     results/cifar10c/shift_pairs_{clip,dinov2}.pkl Figure 2
     results/domainnet/dnet_{clip,dino}.pkl         Figure 3
     results/cifar10c/budget_{clip,dinov2}.pkl      Figure 4
+    results/cifar10c/budget_anchored_{clip,dinov2}.pkl  Figure 4 (anchored refit)
 Outputs: results/figures/f1_rotation.pdf, f2_realbound.pdf, f3_domainnet.pdf,
 f4_allocation.pdf.  In each two-panel figure the left panel is CLIP and the right panel
 is DINOv2.
@@ -111,7 +112,13 @@ def fig_allocation():
     f, axs = plt.subplots(1, 2, figsize=(7.16, 2.9))
     for ax, k in zip(axs, ['clip', 'dinov2']):
         rs = [r for r in load(CIFAR_OUT / ('budget_%s.pkl' % k)) if r['alpha'] == 1.0]
-        for tag, mk, col, lab in [('refit', 's-', '#c0392b', 'refit the probe'),
+        pa = CIFAR_OUT / ('budget_anchored_%s.pkl' % k)
+        if pa.exists():
+            ra = [r for r in load(pa) if r['alpha'] == 1.0]
+            y = np.array([ci([r['a_anch%d' % B] for r in ra]) for B in bud])
+            ax.errorbar(bud, y[:, 0], yerr=y[:, 1], fmt='D-', ms=4, capsize=2, color='#8e44ad',
+                        label='anchored refit')
+        for tag, mk, col, lab in [('refit', 's-', '#c0392b', 'refit from scratch'),
                                   ('cnt', 'o-', '#1f3b73', 'count the marginal'),
                                   ('cnd', '^-', '#2e8b57', 'confusion conditional')]:
             y = np.array([ci([r['a_%s%d' % (tag, B)] for r in rs]) for B in bud])
@@ -125,7 +132,7 @@ def fig_allocation():
         ax.get_xaxis().set_minor_formatter(matplotlib.ticker.NullFormatter())
         ax.set_xlabel(r'$B$'); ax.set_ylabel('accuracy')
     h, l = axs[0].get_legend_handles_labels()
-    f.legend(h, l, loc='lower center', ncol=3, handletextpad=0.4, columnspacing=1.4,
+    f.legend(h, l, loc='lower center', ncol=4, handletextpad=0.4, columnspacing=1.4,
              bbox_to_anchor=(0.5, -0.13))
     f.tight_layout(); f.savefig(FIG_OUT / 'f4_allocation.pdf'); plt.close(f)
 
