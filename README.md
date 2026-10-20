@@ -14,7 +14,9 @@ The repository computes, from frozen foundation-model embeddings and a linear pr
   the target label marginal (Route B, post-stratified counting) and estimating the
   confusion conditional (Route C), with their label requirements and crossover budget;
 * label-free baselines (BN alignment, CORAL, T3A, TENT, SHOT, LAME) with paired
-  sign-flip permutation tests.
+  sign-flip permutation tests;
+* the refit anchored to the source probe, weight-space interpolation and a projected
+  probe as uses of the budget, and supervised target references.
 
 ## Repository layout
 
@@ -31,10 +33,12 @@ data_prep/
   download_cifar.py         CIFAR-10 and CIFAR-10-C
   encode_cifar.py           CLIP ViT-B/32 and DINOv2 ViT-B/14 embeddings of CIFAR-10(-C)
   embed_domainnet.py        CLIP and DINOv2 embeddings of one DomainNet domain
+  text_embed.py             CLIP text prototypes for the zero-shot head
 experiments/
   synthetic/                controlled experiments (no download needed)
   cifar10c/                 CIFAR-10 → CIFAR-10-C, 19 corruptions × 5 severities
   domainnet/                DomainNet, 6 domains, 30 ordered pairs, K ∈ {10,25,50,100,345}
+  zeroshot/                 prototype shifting against feature translation, zero-shot CLIP head
 figures/make_figures.py     Figures 1–4
 scripts/run_all.sh          the full pipeline in order
 scripts/run.sbatch          generic Slurm wrapper for any single step
@@ -139,6 +143,8 @@ Run each script with `clip` and with `dinov2`.
 | `budget_anchored.py` | Source-anchored Route A (ridge toward the source probe, cross-validated) paired with counting on the cells of `budget_allocation.py` | `cifar10c/budget_anchored_<enc>.pkl` |
 | `cosine_head.py` | The gap bound and correctors for a probe on L2-normalized features | `cifar10c/cosine_head_<enc>.pkl` |
 | `spectrum.py` | Ridge effective dimension of the PCA-truncated features | console |
+| `fewshot.py` | Weight-space interpolation (WiSE-FT style) and the Pro2-style projected probe on the labeled draws of `budget_allocation.py` | `cifar10c/fewshot_<enc>.pkl` |
+| `reference.py` | Target-supervised references (target probe, anchored refit with all labels, 20-NN) on held-out halves, and TENT/SHOT over a 16-configuration grid selected on the other corruptions | `cifar10c/reference_<enc>.pkl` |
 
 After both encoders have run:
 
@@ -163,8 +169,18 @@ by the report scripts.
 | `tta.py` | Table 1 (DomainNet columns): TENT, SHOT, LAME (default and oracle-tuned), common-mean + LAME | `domainnet/dnet_tta_<enc>_<tag>.pkl` |
 | `tta_aux.py` | Table 1 (DomainNet columns): BN, CORAL, T3A, scale alignment, per-class with predicted labels | `domainnet/dnet_tta2_<enc>_<tag>.pkl` |
 | `obstruction.py` | Table 1 (DomainNet columns): per-hypothesis, fixed-point and EM per-class correctors, standard TENT/SHOT, consistent-set statistics | `domainnet/dnet_obstruction_<enc>_<tag>.pkl` |
+| `reference.py` | Target-supervised references, TENT/SHOT over the configuration grid, and five uses of a budget (counting, refit from scratch, anchored refit, interpolation, projected probe) at natural label drift | `domainnet/dnet_reference_<enc>_<tag>.pkl` |
 | `core_report.py`, `decision_rule_report.py`, `selective_report.py`, `tta_report.py` | Summaries with paired tests; `tta_report.py` also prints the LaTeX rows of Table 1 | console and `.txt` |
 | `subsample_check.py` | Effect of the 4,000-point target subsample used by the transductive baselines | console |
+
+### Zero-shot head (`experiments/zeroshot`)
+
+After `python data_prep/text_embed.py`:
+
+| Script | Result | Output |
+|---|---|---|
+| `tps_views.py` | Test-time prototype shifting in its own protocol on the zero-shot CLIP head: 63 augmented views per CIFAR-10-C image, confident-view selection, one Adam step on per-class or shared prototype shifts, against the view ensemble, the common-mean correction and the oracle translation | `zeroshot/tps_views.pkl` |
+| `tps.py cifar`, `tps.py domainnet <K list> [tag]` | Transductive prototype shifting with an information-maximization objective, on the zero-shot head and on the source probe, beside the feature translations of the paper | `zeroshot/tps_cifar.pkl`, `zeroshot/tps_domainnet_<tag>.pkl` |
 
 ### Figures
 
