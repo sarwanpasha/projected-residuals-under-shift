@@ -4,11 +4,12 @@ label drift on DomainNet.
 Usage:  python experiments/domainnet/reference.py {clip|dino} <K list> [tag]
 
 Uses the probes and the 4000-point target subsamples of tta.py and obstruction.py.
-The target points outside the subsample form a labeled pool that is never scored.
+Up to 20000 target points outside the subsample form a labeled pool that is never
+scored.
 For every ordered pair the script reports
 
   * the target ridge probe (penalty by cross-validation), the probe refitted toward
-    the source probe, and a 20-nearest-neighbour classifier, each fitted on the full
+    the source probe, and a 20-nearest-neighbour classifier, each fitted on the
     pool and scored on the subsample;
   * TENT and SHOT at every configuration of prlb.core.TTA_GRID, so that a
     configuration can be chosen on the pairs with a different target domain;
@@ -32,6 +33,7 @@ ENC = sys.argv[1]
 KS = [int(x) for x in sys.argv[2].split(',')]
 TAG = sys.argv[3] if len(sys.argv) > 3 else 'all'
 NSUB = 4000
+NPOOL = 20000
 SEED = 0
 BUDG = [200, 1000, 5000]
 LAMS = (1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0)
@@ -100,7 +102,7 @@ def main():
                 Xf, yf = prep(Tg, keep, cmap)
                 g = np.random.default_rng(1000 * K + 10 * si + ti)
                 perm = g.permutation(len(yf))
-                sel = perm[:min(NSUB, len(yf))]; pool = perm[min(NSUB, len(yf)):]
+                sel = perm[:min(NSUB, len(yf))]; pool = perm[min(NSUB, len(yf)):min(NSUB, len(yf)) + NPOOL]
                 Xt = Xf[sel].astype(np.float64); yt = yf[sel]
                 Xp = Xf[pool].astype(np.float64); yp = yf[pool]
                 Dl = R.class_means(Xt, yt, K) - MS
