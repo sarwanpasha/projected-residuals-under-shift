@@ -31,6 +31,8 @@ for e in clip dinov2; do
   run obstruction_$e    python experiments/cifar10c/obstruction.py $e
   run anchored_$e       python experiments/cifar10c/budget_anchored.py $e
   run cosine_head_$e    python experiments/cifar10c/cosine_head.py $e
+  run fewshot_$e        python experiments/cifar10c/fewshot.py $e
+  run reference_$e      python experiments/cifar10c/reference.py $e
 done
 run bound_tightness     python experiments/cifar10c/bound_tightness.py
 run certificate_pairs   python experiments/cifar10c/certificate_pairs.py
@@ -44,7 +46,12 @@ for e in clip dino; do
   run dnet_tta_$e       python experiments/domainnet/tta.py $e 10,25,50,100,345 all
   run dnet_tta_aux_$e   python experiments/domainnet/tta_aux.py $e 10,25,50,100,345 all
   run dnet_obstr_$e     python experiments/domainnet/obstruction.py $e 10,25,50,100,345 all
+  run dnet_ref_$e       python experiments/domainnet/reference.py $e 10,25,50,100,345 all
 done
+run text_embed          python data_prep/text_embed.py
+run tps_views           python experiments/zeroshot/tps_views.py
+run tps_cifar           python experiments/zeroshot/tps.py cifar
+run tps_domainnet       python experiments/zeroshot/tps.py domainnet 10,25,50,100,345 all
 run dnet_core_report    python experiments/domainnet/core_report.py
 run dnet_rule_report    python experiments/domainnet/decision_rule_report.py
 run dnet_sel_report     python experiments/domainnet/selective_report.py
