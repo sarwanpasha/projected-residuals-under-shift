@@ -1,5 +1,5 @@
 """CIFAR-10 to CIFAR-10-C with frozen foundation-model embeddings: 19 corruptions x 5
-severities = 95 shift pairs per encoder (Figure 2 and the real-data rows of the text).
+severities = 95 shift pairs per encoder.
 
 Usage:  python experiments/cifar10c/shift_pairs.py {clip|dinov2} [tta]
 
@@ -10,7 +10,7 @@ plays the role of the source.  For every shift pair the script records:
   * label-free accuracies: no correction, BN standardization, CORAL, T3A, the
     common-mean correction, the per-class oracle and the per-class correction with
     predicted assignments (TENT and SHOT upper bounds when "tta" is given);
-  * the Theorem 1 bound evaluated with source margins, with oracle-corrected target
+  * the gap bound evaluated with source margins, with oracle-corrected target
     margins and with pseudo-labeled target margins;
   * the plug-in certificate and the mean-confidence null, ranked against Gamma_c;
   * label-budgeted arms at B in {20, 40, 80, 160, 240, 400}: the probe refitted with a

@@ -1,4 +1,4 @@
-"""Tightness of the three evaluations of the Theorem 1 bound on real shift pairs.
+"""Tightness of the three evaluations of the gap bound on real shift pairs.
 
 For each encoder and each bound (source margins, oracle-corrected target margins,
 pseudo-labeled target margins) the script reports the mean, the number of violations,

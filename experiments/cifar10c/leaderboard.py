@@ -1,4 +1,4 @@
-"""Label-free leaderboard with paired inference (Table 1).
+"""Label-free leaderboard with paired inference.
 
 Usage:  python experiments/cifar10c/leaderboard.py {clip|dinov2}
 

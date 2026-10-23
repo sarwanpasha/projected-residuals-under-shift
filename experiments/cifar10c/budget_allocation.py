@@ -1,4 +1,4 @@
-"""Where a small target label budget should be spent under label drift (Figure 4).
+"""Where a small target label budget should be spent under label drift.
 
 Usage:  python experiments/cifar10c/budget_allocation.py {clip|dinov2}
 

@@ -6,7 +6,7 @@ Every embedding is projected to the unit sphere before the probe is fitted and b
 any correction, so the linear head acts on normalized features as a cosine-style head
 does, and all displacements are measured in that space.  The script reports, for the
 95 shift pairs, the accuracies of no correction, the common-mean, the per-class
-predicted and the oracle correctors, and the Theorem 1 bound under the three margin
+predicted and the oracle correctors, and the gap bound under the three margin
 laws.
 
 Output: results/cifar10c/cosine_head_<enc>.pkl

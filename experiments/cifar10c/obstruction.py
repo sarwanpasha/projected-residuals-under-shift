@@ -1,4 +1,4 @@
-"""Label-free per-class rules beyond the one-step corrector, on CIFAR-10-C (Table 1).
+"""Label-free per-class rules beyond the one-step corrector, on CIFAR-10-C.
 
 Usage:  python experiments/cifar10c/obstruction.py {clip|dinov2}
 
