@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "prlb"
 version = "1.0.0"
-description = "Projected residuals and label budgets for linear probes under distribution shift"
+description = "Projected residuals, gap bounds and label-budget allocation for linear probes on frozen embeddings"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 dependencies = [
