@@ -1,5 +1,5 @@
 """DomainNet label-free leaderboard: merges tta.py and tta_aux.py, prints mean accuracy
-with 95 percent intervals per K and encoder, the LaTeX table body, and paired contrasts
+with 95 percent intervals per K and encoder, and paired contrasts
 against the common-mean correction.
 """
 import sys,pickle,glob,numpy as np
@@ -41,16 +41,6 @@ for K in KS:
             m,h,n=ci95(v)
             out.append('%s %.5f+-%.5f (n=%d)'%(e,m,h,n))
         print('  %-24s %s'%(lab,' | '.join(out)))
-    print()
-for K in KS:
-    print('%% --- LaTeX body, DomainNet K=%d ---'%K)
-    for lab,key in ARMS:
-        cells=[]
-        for e in ENCS:
-            v=[r.get(key,float('nan')) for r in DAT[e] if r['K']==K]
-            m,h,n=ci95(v)
-            cells.append('$%.4f\\pm%.4f$'%(m,h))
-        print('%s & %s \\\\'%(lab,' & '.join(cells)))
     print()
 v=[r.get('lame_alpha') for e in ENCS for r in DAT[e]]
 print('LAME alpha choices:',{a:v.count(a) for a in sorted(set(v))})

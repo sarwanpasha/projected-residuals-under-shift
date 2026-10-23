@@ -1,4 +1,4 @@
-"""Label-free per-class rules beyond the one-step corrector, on DomainNet (Table 1).
+"""Label-free per-class rules beyond the one-step corrector, on DomainNet.
 
 Usage:  python experiments/domainnet/obstruction.py {clip|dino} <K list> [tag]
 

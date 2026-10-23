@@ -1,11 +1,11 @@
-"""DomainNet core analysis (Figure 3 and the DomainNet rows of the text).
+"""DomainNet core analysis.
 
 Usage:  python experiments/domainnet/core.py {clip|dino} [K list, default 10,25,50,100,345]
 
 The K most frequent classes over the six domains are kept.  For each source domain a
 ridge probe is trained on a 60 percent split and the remaining 40 percent is a holdout.
 For each of the 30 ordered source-target pairs the script records the label drift,
-the common-mean, oracle and label-free baseline accuracies, the gap, the Theorem 1
+the common-mean, oracle and label-free baseline accuracies, the gap, the gap
 bound with oracle-corrected, source and pseudo-labeled margins, the number of classes
 with Gamma_c > 0 and with a positive plug-in estimate, label-shift estimates (BBSE,
 RLLS, MLLS with and without bias-corrected temperature scaling), prior-corrected
