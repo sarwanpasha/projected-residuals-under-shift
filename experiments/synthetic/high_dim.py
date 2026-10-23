@@ -1,4 +1,4 @@
-"""Theorem 1 in high dimension, with anisotropic spectra and heavy tails.
+"""The gap bound in high dimension, with anisotropic spectra and heavy tails.
 
 Dimensions d in {50, 256, 512, 1024}, an isotropic or power-law (alpha = 1) spectrum,
 and Gaussian or multivariate-t tails (5 or 3 degrees of freedom), at residual angles of

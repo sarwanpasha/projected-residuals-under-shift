@@ -1,10 +1,10 @@
-"""Rotation sweep of the residual against the discriminative subspace (Figure 1).
+"""Rotation sweep of the residual against the discriminative subspace.
 
 Gaussian classes in d = 50 with K = 8, a common displacement of norm 5 and residuals
 of RMS norm 2 whose angle theta to D = span{w_j - w_k} is swept from 0 to 90 degrees,
 30 seeds per angle.  For every cell the script measures the accuracy gap between the
 per-class oracle correction and the common-mean correction, evaluates the indicator
-bound of Theorem 1, and evaluates three comparators: the naive projected norm, a
+projected-residual gap bound, and evaluates three comparators: the naive projected norm, a
 Chebyshev bound and a sub-Gaussian bound on the margin tail.
 
 Output: results/synthetic/rotation.pkl
