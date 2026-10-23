@@ -5,7 +5,9 @@ Usage:  python experiments/domainnet/reference.py {clip|dino} <K list> [tag]
 
 Uses the probes and the 4000-point target subsamples of tta.py and obstruction.py.
 Up to 20000 target points outside the subsample form a labeled pool that is never
-scored.
+scored.  When a target domain has fewer than 8000 points at the given class count,
+the scored subsample is half of the domain, so that the pool is never empty, and a
+budget larger than the pool uses the whole pool.
 For every ordered pair the script reports
 
   * the target ridge probe (penalty by cross-validation), the probe refitted toward
@@ -102,7 +104,8 @@ def main():
                 Xf, yf = prep(Tg, keep, cmap)
                 g = np.random.default_rng(1000 * K + 10 * si + ti)
                 perm = g.permutation(len(yf))
-                sel = perm[:min(NSUB, len(yf))]; pool = perm[min(NSUB, len(yf)):min(NSUB, len(yf)) + NPOOL]
+                ns = min(NSUB, len(yf) // 2)
+                sel = perm[:ns]; pool = perm[ns:ns + NPOOL]
                 Xt = Xf[sel].astype(np.float64); yt = yf[sel]
                 Xp = Xf[pool].astype(np.float64); yp = yf[pool]
                 Dl = R.class_means(Xt, yt, K) - MS
@@ -126,6 +129,7 @@ def main():
                 for B in BUDG:
                     lb = bg.choice(len(yp), size=min(B, len(yp)), replace=False)
                     Xl, yl = Xp[lb], yp[lb]
+                    r['nlab%d' % B] = int(len(lb))
                     cn = np.bincount(yl, minlength=K).astype(float)
                     pv = (cn + EPS) / (cn + EPS).sum()
                     r['empty%d' % B] = float(np.mean(cn == 0))
