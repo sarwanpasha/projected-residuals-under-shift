@@ -12,7 +12,7 @@ is one vector per class or one vector shared by all classes.  Alongside, on the 
 images:
 
   * the zero-shot head with no correction, with the common-mean feature correction,
-    and with the per-class oracle translation of the paper;
+    and with the per-class oracle translation;
   * the confident-view ensemble alone, which averages the kept views with the
     unshifted prototypes, to separate the effect of the views from that of the shift;
   * prototype shifting applied after the common-mean correction.

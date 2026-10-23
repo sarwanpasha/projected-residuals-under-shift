@@ -9,7 +9,7 @@ a point by its cosine similarity to the text prototypes of data_prep/text_embed.
 with the CLIP logit scale of 100.  The probe head is the source ridge probe.  On each
 head the script measures
 
-  * the feature-translation rules of the paper: no correction, the common-mean
+  * the feature-translation rules: no correction, the common-mean
     correction, the fixed-point rule with the exact class displacements, and the
     per-class oracle;
   * transductive prototype shifting: one shift vector per class added to the class
