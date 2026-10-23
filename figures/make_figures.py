@@ -1,11 +1,11 @@
-"""Draw Figures 1 to 4 from the saved experiment outputs.
+"""Draw the four summary figures from the saved experiment outputs.
 
 Inputs:
-    results/synthetic/rotation.pkl                 Figure 1
-    results/cifar10c/shift_pairs_{clip,dinov2}.pkl Figure 2
-    results/domainnet/dnet_{clip,dino}.pkl         Figure 3
-    results/cifar10c/budget_{clip,dinov2}.pkl      Figure 4
-    results/cifar10c/budget_anchored_{clip,dinov2}.pkl  Figure 4 (anchored refit)
+    results/synthetic/rotation.pkl                 rotation sweep
+    results/cifar10c/shift_pairs_{clip,dinov2}.pkl bound against gap
+    results/domainnet/dnet_{clip,dino}.pkl         DomainNet summary
+    results/cifar10c/budget_{clip,dinov2}.pkl      budget allocation
+    results/cifar10c/budget_anchored_{clip,dinov2}.pkl  budget allocation (anchored refit)
 Outputs: results/figures/f1_rotation.pdf, f2_realbound.pdf, f3_domainnet.pdf,
 f4_allocation.pdf.  In each two-panel figure the left panel is CLIP and the right panel
 is DINOv2.
