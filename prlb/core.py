@@ -2,7 +2,7 @@
 
 A linear probe is a pair (W, b) with W of shape (K, d) and b of shape (K,); its scores
 are X @ W.T + b.  The module contains the ridge probe, margins and the projected
-residual Gamma_c, the indicator bound of Theorem 1, the label-free correctors and
+residual Gamma_c, the projected-residual gap bound, the label-free correctors and
 baselines, the label-budgeted selective corrector, and the controlled generator used
 by the synthetic experiments.
 """
